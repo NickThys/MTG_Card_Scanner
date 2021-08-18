@@ -1,10 +1,12 @@
+import os
+import shutil
 import sys
 import numpy as np
 import cv2
 from os import listdir
 from os import makedirs
 from os import path
-
+from mtgsdk import Card
 import pytesseract
 
 
@@ -151,5 +153,21 @@ for f in listdir("TestCards"):
     cv2.imwrite(file_name, thresh)
     debug_image(thresh, '5_title_thresh', f)
     debug_image(title, '6_title_img', f)
-    print(f'thresh: {pytesseract.image_to_string(thresh)}')
-    print(f'title: {pytesseract.image_to_string(thresh)}')
+    print(f'thresh: {pytesseract.image_to_string(thresh).strip()}')
+    title=pytesseract.image_to_string(thresh)
+    cards = Card.where(name=title.strip()).all()
+
+    for card in cards:
+        print(card.name + ': set ' + card.set)
+    val = input("continue to next card? y/n: ")
+    if val=='y' or val=="Y":
+        pass
+    else:
+        break
+
+val = input("Delete debug images? y/n: ")
+if val=='y' or val=="Y":
+    shutil.rmtree('debug')
+    print("debug images deleted...")
+else:
+    pass
