@@ -8,13 +8,16 @@ from os import makedirs
 from os import path
 from mtgsdk import Card
 import pytesseract
+from collections import OrderedDict
+
+from pytesseract import Output
 
 
 def testContourValidity(contour, full_width, full_height):
     # Max countour width/height/area is 95% of whole image
     max_threshold = 0.95
     # Min contour width/height/area is 30% of whole image
-    min_threshold = 0.3
+    min_threshold = 0.2
     min_area = full_width * full_height * min_threshold
     max_area = full_width * full_height * max_threshold
     max_width = max_threshold * full_width
@@ -126,11 +129,21 @@ def debug_image(img, extra_path, filename):
     cv2.imwrite(fpath + filename, img)
 
 
+def filterTitle(texts):
+    title = ''
+    for i in range(len(texts)):
+        if texts[i] != "" and texts[i] != " " :
+            if not any(ext in texts[i] for ext in testStr):
+                title += texts[i] + ' '
+    return title
+
+testStr = [":", "’", ";", "—", "$", "/", "_"]
+os.putenv('TESSDATA_PREFIX','C:\\Program Files\\Tesseract-OCR\\tessdata\\mtg.traineddata')
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
-y1, y2 = 20, 72
-x1, x2 = 30, 460
-
+y1, y2 = 15, 90
+x1, x2 = 30, 410
+listNames=[]
 for f in listdir("TestCards"):
     print(f)
     filename = "TestCards/" + f
@@ -151,19 +164,26 @@ for f in listdir("TestCards"):
     flag, thresh = cv2.threshold(title, 100, 255, cv2.THRESH_BINARY)
     file_name = 'titles/' + f
     cv2.imwrite(file_name, thresh)
-    debug_image(thresh, '5_title_thresh', f)
-    debug_image(title, '6_title_img', f)
-    print(f'thresh: {pytesseract.image_to_string(thresh).strip()}')
-    title=pytesseract.image_to_string(thresh)
-    cards = Card.where(name=title.strip()).all()
+    debug_image(thresh, '6_title_thresh', f)
+    debug_image(title, '7_title_img', f)
 
+    listNames.append(filterTitle(pytesseract.image_to_data(title, output_type=Output.DICT)['text']))
+
+    '''   cards = Card.where(name=title).all()
     for card in cards:
         print(card.name + ': set ' + card.set)
-    val = input("continue to next card? y/n: ")
+    '''
+
+    val='y'
+    #val = input("continue to next card? y/n: ")
     if val=='y' or val=="Y":
         pass
     else:
         break
+print('\n\n')
+for name in listNames:
+    print(name)
+
 
 val = input("Delete debug images? y/n: ")
 if val=='y' or val=="Y":
