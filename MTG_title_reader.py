@@ -1,6 +1,8 @@
 import os
 import shutil
 import sys
+
+import mtgsdk
 import numpy as np
 import cv2
 from os import listdir
@@ -132,18 +134,59 @@ def debug_image(img, extra_path, filename):
 def filterTitle(texts):
     title = ''
     for i in range(len(texts)):
-        if texts[i] != "" and texts[i] != " " :
+        if texts[i] != "" and texts[i] != " ":
             if not any(ext in texts[i] for ext in testStr):
-                title += texts[i] + ' '
+                if title != '':
+                    title += ' '
+                title += texts[i]
     return title
 
+
+def removeWordFromTitle(title, removeFirstWord=True):
+    splitTitle = title.split()
+    for word in range(len(splitTitle)):
+        if removeFirstWord == True and word == 0:
+            splitTitle.pop(word)
+        if removeFirstWord == False and word == len(splitTitle) - 1:
+            splitTitle.pop(word)
+    return ' '.join(map(str, splitTitle))
+
+
+def getCards(title,set=''):
+
+    return mtgsdk.Card.where(set=set).where(name=title).where(page=0).where(pageSize=10).all()
+
+
+def card_searching(titles):
+    for title in range(len(titles)):
+        if titles[title] != '':
+            # cards = getCards(titles[title],'AFR)
+            cards = getCards(titles[title])
+
+            for card in range(len(cards)):
+                print(cards[card].name + " : " + cards[card].set)
+            if len(cards) == 0:
+                print(titles[title] + " not found in the db"
+                                      "\n try to remove last word ... ")
+                titleR = removeWordFromTitle(titles[title], False)
+
+                cards = getCards(titleR)
+
+                for card in range(len(cards)):
+                    print(cards[card].name + " : " + cards[card].set)
+                if len(cards) == 0:
+                    print(titleR + " not found in the db")
+
+            print("__________________________")
+
+
 testStr = [":", "’", ";", "—", "$", "/", "_"]
-os.putenv('TESSDATA_PREFIX','C:\\Program Files\\Tesseract-OCR\\tessdata\\mtg.traineddata')
+os.putenv('TESSDATA_PREFIX', 'C:\\Program Files\\Tesseract-OCR\\tessdata\\mtg.traineddata')
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
 y1, y2 = 15, 90
 x1, x2 = 30, 410
-listNames=[]
+listNames = []
 for f in listdir("TestCards"):
     print(f)
     filename = "TestCards/" + f
@@ -169,24 +212,21 @@ for f in listdir("TestCards"):
 
     listNames.append(filterTitle(pytesseract.image_to_data(title, output_type=Output.DICT)['text']))
 
-    '''   cards = Card.where(name=title).all()
-    for card in cards:
-        print(card.name + ': set ' + card.set)
-    '''
-
-    val='y'
-    #val = input("continue to next card? y/n: ")
-    if val=='y' or val=="Y":
+    val = 'y'
+    # val = input("continue to next card? y/n: ")
+    if val == 'y' or val == "Y":
         pass
     else:
         break
+
+card_searching(listNames)
+
 print('\n\n')
 for name in listNames:
     print(name)
 
-
 val = input("Delete debug images? y/n: ")
-if val=='y' or val=="Y":
+if val == 'y' or val == "Y":
     shutil.rmtree('debug')
     print("debug images deleted...")
 else:
