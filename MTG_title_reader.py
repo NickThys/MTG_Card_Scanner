@@ -24,8 +24,8 @@ def url_to_image(url, readFlag=cv2.IMREAD_GRAYSCALE):
 
 
 # <editor-fold desc="Get card from the image">
-def testContourValidity(contour, full_width, full_height):
-    # Max countour width/height/area is 95% of whole image
+def test_contour_validity(contour, full_width, full_height):
+    # Max contour width/height/area is 95% of whole image
     max_threshold = 0.95
     # Min contour width/height/area is 30% of whole image
     min_threshold = 0.2
@@ -47,6 +47,7 @@ def testContourValidity(contour, full_width, full_height):
     rect = cv2.minAreaRect(contour)
     box = cv2.boxPoints(rect)
     box = np.int0(box)
+    # noinspection PyTypeChecker
     (tl, tr, br, bl) = sort_points(box)
     box_width = int(((br[0] - bl[0]) + (tr[0] - tl[0])) / 2)
     box_height = int(((br[1] - tr[1]) + (bl[1] - tl[1])) / 2)
@@ -62,47 +63,47 @@ def testContourValidity(contour, full_width, full_height):
     return True
 
 
-def find_square(im, f):
+def find_square(im, file_name):
     # Width and height for validity check
     h = np.size(im, 0)
     w = np.size(im, 1)
     # Grayscale and blur before trying to find contours
-    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (1, 1), 1000)
-    debug_image(blur, '1_preprocess_gray', f)
+    img_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(img_gray, (1, 1), 1000)
+    debug_image(blur, '1_preprocess_gray', file_name)
     # Threshold and contours
-    flag, thresh = cv2.threshold(blur, 115, 255, cv2.THRESH_BINARY)
-    debug_image(thresh, '2_preprocess_thresh', f)
-    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    _, threshold = cv2.threshold(blur, 115, 255, cv2.THRESH_BINARY)
+    debug_image(threshold, '2_preprocess_thresh', file_name)
+    contours, hierarchy = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # Debug
-    im_debug = im.copy()
+    img_debug = im.copy()
     # Find largest contour which does not take full image size.
-    max = None
+    max_contour = None
     for x in contours:
-        if testContourValidity(x, w, h):
-            im_debug = cv2.drawContours(im_debug, [x], -1, (0, 255, 0), 3)
-            if max is None or cv2.contourArea(max) < cv2.contourArea(x):
-                max = x
+        if test_contour_validity(x, w, h):
+            img_debug = cv2.drawContours(img_debug, [x], -1, (0, 255, 0), 3)
+            if max_contour is None or cv2.contourArea(max_contour) < cv2.contourArea(x):
+                max_contour = x
     # Debug
-    debug_image(im_debug, '3_possible_contours', f)
+    debug_image(img_debug, '3_possible_contours', file_name)
     # Min area rectangle around that contour. This nicely finds corners as MTG cards are rounded
-    rect = cv2.minAreaRect(max)
+    rect = cv2.minAreaRect(max_contour)
     box = cv2.boxPoints(rect)
     box = np.int0(box)
     return box
 
 
-def dpot(a, b):
+def d_pot(a, b):
     return (a - b) ** 2
 
 
-def adist(a, b):
-    return np.sqrt(dpot(a[0], b[0]) + dpot(a[1], b[1]))
+def a_dist(a, b):
+    return np.sqrt(d_pot(a[0], b[0]) + d_pot(a[1], b[1]))
 
 
 def max_distance(a1, a2, b1, b2):
-    dist1 = adist(a1, a2)
-    dist2 = adist(b1, b2)
+    dist1 = a_dist(a1, a2)
+    dist2 = a_dist(b1, b2)
     if int(dist2) < int(dist1):
         return int(dist1)
     else:
@@ -111,13 +112,13 @@ def max_distance(a1, a2, b1, b2):
 
 def sort_points(pts):
     ret = np.zeros((4, 2), dtype="float32")
-    sumF = pts.sum(axis=1)
-    diffF = np.diff(pts, axis=1)
+    sum_f = pts.sum(axis=1)
+    diff_f = np.diff(pts, axis=1)
 
-    ret[0] = pts[np.argmin(sumF)]
-    ret[1] = pts[np.argmin(diffF)]
-    ret[2] = pts[np.argmax(sumF)]
-    ret[3] = pts[np.argmax(diffF)]
+    ret[0] = pts[np.argmin(sum_f)]
+    ret[1] = pts[np.argmin(diff_f)]
+    ret[2] = pts[np.argmax(sum_f)]
+    ret[3] = pts[np.argmax(diff_f)]
 
     return ret
 
@@ -136,31 +137,31 @@ def fix_perspective(image, pts):
 # </editor-fold>
 
 
-def debug_image(img, extra_path, filename):
-    fpath = "debug/" + extra_path + "/"
-    if not path.isdir(fpath):
-        makedirs(fpath)
-    cv2.imwrite(fpath + filename, img)
+def debug_image(debug_img, extra_path, debug_filename):
+    f_path = "debug/" + extra_path + "/"
+    if not path.isdir(f_path):
+        makedirs(f_path)
+    cv2.imwrite(f_path + debug_filename, debug_img)
 
 
 # <editor-fold desc="filter title">
-def filterTitle(texts):
-    title = ''
+def filter_title(texts):
+    original_title = ''
     for i in range(len(texts)):
         if texts[i] != "" and texts[i] != " ":
             if not any(ext in texts[i] for ext in testStr):
-                if title != '':
-                    title += ' '
-                title += texts[i]
-    return title
+                if original_title != '':
+                    original_title += ' '
+                original_title += texts[i]
+    return original_title
 
 
-def removeWordFromTitle(title, removeFirstWord=True):
-    splitTitle = title.split()
+def remove_word_from_title(full_title, removeFirstWord=True):
+    splitTitle = full_title.split()
     for word in range(len(splitTitle)):
-        if removeFirstWord == True and word == 0:
+        if removeFirstWord is True and word == 0:
             splitTitle.pop(word)
-        if removeFirstWord == False and word == len(splitTitle) - 1:
+        if removeFirstWord is False and word == len(splitTitle) - 1:
             splitTitle.pop(word)
     return ' '.join(map(str, splitTitle))
 
@@ -168,94 +169,95 @@ def removeWordFromTitle(title, removeFirstWord=True):
 # </editor-fold>
 
 
-def getCards(title, set=''):
-    return mtgsdk.Card.where(set=set).where(name=title).where(page=0).where(pageSize=10).all()
+# noinspection PyShadowingNames
+def get_cards(title, mtg_set=''):
+    return mtgsdk.Card.where(set=mtg_set).where(name=title).where(page=0).where(pageSize=10).all()
 
 
 def card_searching(titles):
-    cardList = []
-    for title in range(len(titles)):
-        if titles[title] != '':
+    card_list = []
+    for title_index in range(len(titles)):
+        if titles[title_index] != '':
             # cards = getCards(titles[title],'AFR)
-            cards = getCards(titles[title])
+            cards = get_cards(titles[title_index])
 
-            for card in range(len(cards)):
-                print(cards[card].name + " : " + cards[card].set)
+            for card_index in range(len(cards)):
+                print(cards[card_index].name + " : " + cards[card_index].set)
                 # if card == len(cards) - 1:
-                cardList.append(cards[card])
+                card_list.append(cards[card_index])
 
             if len(cards) == 0:
-                print(titles[title] + " not found in the db"
-                                      "\n try to remove last word ... ")
-                titleR = removeWordFromTitle(titles[title], False)
-                cards = getCards(titleR)
+                print(titles[title_index] + " not found in the db"
+                                            "\n try to remove last word ... ")
+                title_r = remove_word_from_title(titles[title_index], False)
+                cards = get_cards(title_r)
 
-                for card in range(len(cards)):
-                    print(cards[card].name + " : " + cards[card].set)
+                for card_index in range(len(cards)):
+                    print(cards[card_index].name + " : " + cards[card_index].set)
                     # if card == len(cards) - 1:
-                    cardList.append(cards[card])
+                    card_list.append(cards[card_index])
 
                 if len(cards) == 0:
-                    print(titleR + " not found in the db")
+                    print(title_r + " not found in the db")
 
             print("__________________________")
-    return cardList
+    return card_list
 
 
-def card_searching_single(title_txt, img):
-    cardlist = []
-    if title_txt != "":
-        cards = getCards(title_txt)
-        for card in range(len(cards)):
-            cardlist.append(cards[card])
+def card_searching_single(txt_title, card_img):
+    card_list = []
+    if txt_title != "":
+        cards = get_cards(txt_title)
+        for card_index in range(len(cards)):
+            card_list.append(cards[card_index])
         if len(cards) == 0:
-            print(title_txt + " not found in the db"
+            print(txt_title + " not found in the db"
                               "\n try to remove last word ... ")
-            titleR = removeWordFromTitle(title_txt, False)
-            cards = getCards(titleR)
+            title_r = remove_word_from_title(txt_title, False)
+            cards = get_cards(title_r)
 
-            for card in range(len(cards)):
-                print(cards[card].name + " : " + cards[card].set)
+            for card_index in range(len(cards)):
+                print(cards[card_index].name + " : " + cards[card_index].set)
                 # if card == len(cards) - 1:
-                cardlist.append(cards[card])
+                card_list.append(cards[card_index])
             if len(cards) == 0:
-                print(titleR + " not found in the db"
-                      "\n try to remove First word ... ")
-                titleR = removeWordFromTitle(title_txt)
-                cards = getCards(titleR)
+                print(title_r + " not found in the db"
+                                "\n try to remove First word ... ")
+                title_r = remove_word_from_title(txt_title)
+                cards = get_cards(title_r)
 
-                for card in range(len(cards)):
-                    print(cards[card].name + " : " + cards[card].set)
+                for card_index in range(len(cards)):
+                    print(cards[card_index].name + " : " + cards[card_index].set)
                     # if card == len(cards) - 1:
-                    cardlist.append(cards[card])
+                    card_list.append(cards[card_index])
                 if len(cards) == 0:
-                    print(titleR + " not found in the db")
-    if len(cardlist) == 0:
+                    print(title_r + " not found in the db")
+    if len(card_list) == 0:
         pass
-    elif len(cardlist) == 1:
-        return cardlist
+    elif len(card_list) == 1:
+        return card_list
     else:
         result = []
-        for card in range(len(cardlist)):
-            if cardlist[card].image_url != None:
-                img_gray = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), [200, 300])
-                template = cv2.resize(url_to_image(cardlist[card].image_url), [200, 300])
+        for card_index in range(len(card_list)):
+            if card_list[card_index].image_url is not None:
+                img_gray = cv2.resize(cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY), [200, 300])
+                template = cv2.resize(url_to_image(card_list[card_index].image_url), [200, 300])
                 # cv2.imshow('test',template)
                 # cv2.waitKey(0)
 
                 res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-                result.append([card, res])
+                result.append([card_index, res])
         index_highest_card = None
         highest_val = 0
-        for resul in range(len(result)):
-            if result[resul][1] >= highest_val:
-                index_highest_card = result[resul][0]
-                highest_val = result[resul][1]
+        for single_result in range(len(result)):
+            if result[single_result][1] >= highest_val:
+                index_highest_card = result[single_result][0]
+                highest_val = result[single_result][1]
             pass
 
         print(f'\nindex card: {index_highest_card}\n'
-              f'card name: {cardlist[index_highest_card].name}\n')
-        return cardlist[index_highest_card]
+              f'card name: {card_list[index_highest_card].name}\n')
+        return card_list[index_highest_card]
 
 
 # constants
@@ -272,10 +274,11 @@ for f in listdir("TestCards"):
     print(f)
     filename = "TestCards/" + f
     img = cv2.imread(filename)
-    # find countours
+    # find contours
     square = find_square(img, f)
     im_debug = cv2.drawContours(img.copy(), [square], -1, (0, 255, 0), 3)
     debug_image(im_debug, "4_selected_contour", f)
+    # noinspection PyTypeChecker
     img = fix_perspective(img, square)
     # set the image right
     debug_image(img, '5_perspective_fix', f)
@@ -286,7 +289,7 @@ for f in listdir("TestCards"):
 
     debug_image(thresh, '6_title_thresh', f)
     debug_image(title, '7_title_img', f)
-    title_txt = filterTitle(pytesseract.image_to_data(title, output_type=Output.DICT)['text'])
+    title_txt = filter_title(pytesseract.image_to_data(title, output_type=Output.DICT)['text'])
     listNames.append(title_txt)
     card = card_searching_single(title_txt, img)
 
