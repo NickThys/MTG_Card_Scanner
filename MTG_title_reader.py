@@ -12,7 +12,7 @@ import pytesseract
 from pytesseract import Output
 
 
-def url_to_image(url, readFlag=cv2.IMREAD_COLOR):
+def url_to_image(url, readFlag=cv2.IMREAD_GRAYSCALE):
     # download the image, convert it to a NumPy array, and then read
     # it into OpenCV format
     resp = urlopen(url)
@@ -173,19 +173,19 @@ def card_searching(titles):
 
             for card in range(len(cards)):
                 print(cards[card].name + " : " + cards[card].set)
-                if card == len(cards) - 1:
-                    cardList.append(cards[card])
+                # if card == len(cards) - 1:
+                cardList.append(cards[card])
+
             if len(cards) == 0:
                 print(titles[title] + " not found in the db"
                                       "\n try to remove last word ... ")
                 titleR = removeWordFromTitle(titles[title], False)
-
                 cards = getCards(titleR)
 
                 for card in range(len(cards)):
                     print(cards[card].name + " : " + cards[card].set)
-                    if card == len(cards) - 1:
-                        cardList.append(cards[card])
+                    # if card == len(cards) - 1:
+                    cardList.append(cards[card])
 
                 if len(cards) == 0:
                     print(titleR + " not found in the db")
@@ -193,6 +193,41 @@ def card_searching(titles):
             print("__________________________")
     return cardList
 
+
+def card_searching_single(title_txt, img):
+    cardlist = []
+    if title_txt != "":
+        cards = getCards(title_txt)
+        for card in range(len(cards)):
+            cardlist.append(cards[card])
+        if len(cards) == 0:
+            print(title_txt + " not found in the db"
+                                  "\n try to remove last word ... ")
+            titleR = removeWordFromTitle(title_txt, False)
+            cards = getCards(titleR)
+
+            for card in range(len(cards)):
+                print(cards[card].name + " : " + cards[card].set)
+                # if card == len(cards) - 1:
+                cardlist.append(cards[card])
+            if len(cards) == 0:
+                print(titleR + " not found in the db")
+    if len(cardlist)==0:
+        pass
+    elif len(cardlist)==1:
+        return cardlist
+    else:
+        result=[]
+        for card in range(len(cardlist)):
+            if cardlist[card].image_url!=None:
+                img_gray=cv2.resize(cv2.cvtColor(img,cv2.COLOR_BGR2GRAY),[200,300])
+                template=cv2.resize(url_to_image(cardlist[card].image_url),[200,300])
+                cv2.imshow('test',template)
+                cv2.waitKey(0)
+
+                res=cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+                result.append([[card],[res]])
+        print(result)
 
 # constants
 testStr = [":", "’", ";", "—", "$", "/", "_"]
@@ -203,6 +238,7 @@ pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesse
 y1, y2 = 15, 90
 x1, x2 = 30, 410
 listNames = []
+
 for f in listdir("TestCards"):
     print(f)
     filename = "TestCards/" + f
@@ -218,19 +254,12 @@ for f in listdir("TestCards"):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     title = gray[y1:y2, x1:x2]
     flag, thresh = cv2.threshold(title, 100, 255, cv2.THRESH_BINARY)
-    file_name = 'titles/' + f
-    cv2.imwrite(file_name, thresh)
+
     debug_image(thresh, '6_title_thresh', f)
     debug_image(title, '7_title_img', f)
-
-    listNames.append(filterTitle(pytesseract.image_to_data(title, output_type=Output.DICT)['text']))
-
-    val = 'y'
-    # val = input("continue to next card? y/n: ")
-    if val == 'y' or val == "Y":
-        pass
-    else:
-        break
+    title_txt = filterTitle(pytesseract.image_to_data(title, output_type=Output.DICT)['text'])
+    listNames.append(title_txt)
+    card = card_searching_single(title_txt, img)
 
 cards = card_searching(listNames)
 
