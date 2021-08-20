@@ -223,11 +223,21 @@ def card_searching_single(title_txt, img):
                 img_gray=cv2.resize(cv2.cvtColor(img,cv2.COLOR_BGR2GRAY),[200,300])
                 template=cv2.resize(url_to_image(cardlist[card].image_url),[200,300])
                 cv2.imshow('test',template)
-                cv2.waitKey(0)
+                #cv2.waitKey(0)
 
                 res=cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-                result.append([[card],[res]])
-        print(result)
+                result.append([card,res])
+        index_highest_card=None
+        highest_val=0
+        for resul in range(len(result)):
+            if result[resul][1]>= highest_val:
+                index_highest_card=result[resul][0]
+                highest_val=result[resul][1]
+            pass
+
+        print(f'index card: {index_highest_card}\n'
+              f'card name: {cardlist[index_highest_card].name}')
+        return cardlist[index_highest_card]
 
 # constants
 testStr = [":", "’", ";", "—", "$", "/", "_"]
