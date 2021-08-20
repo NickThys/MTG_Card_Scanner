@@ -23,6 +23,7 @@ def url_to_image(url, readFlag=cv2.IMREAD_GRAYSCALE):
     return image
 
 
+# <editor-fold desc="Get card from the image">
 def testContourValidity(contour, full_width, full_height):
     # Max countour width/height/area is 95% of whole image
     max_threshold = 0.95
@@ -132,6 +133,9 @@ def fix_perspective(image, pts):
     return fixed_resized
 
 
+# </editor-fold>
+
+
 def debug_image(img, extra_path, filename):
     fpath = "debug/" + extra_path + "/"
     if not path.isdir(fpath):
@@ -139,6 +143,7 @@ def debug_image(img, extra_path, filename):
     cv2.imwrite(fpath + filename, img)
 
 
+# <editor-fold desc="filter title">
 def filterTitle(texts):
     title = ''
     for i in range(len(texts)):
@@ -158,6 +163,9 @@ def removeWordFromTitle(title, removeFirstWord=True):
         if removeFirstWord == False and word == len(splitTitle) - 1:
             splitTitle.pop(word)
     return ' '.join(map(str, splitTitle))
+
+
+# </editor-fold>
 
 
 def getCards(title, set=''):
@@ -202,7 +210,7 @@ def card_searching_single(title_txt, img):
             cardlist.append(cards[card])
         if len(cards) == 0:
             print(title_txt + " not found in the db"
-                                  "\n try to remove last word ... ")
+                              "\n try to remove last word ... ")
             titleR = removeWordFromTitle(title_txt, False)
             cards = getCards(titleR)
 
@@ -211,33 +219,44 @@ def card_searching_single(title_txt, img):
                 # if card == len(cards) - 1:
                 cardlist.append(cards[card])
             if len(cards) == 0:
-                print(titleR + " not found in the db")
-    if len(cardlist)==0:
+                print(titleR + " not found in the db"
+                      "\n try to remove First word ... ")
+                titleR = removeWordFromTitle(title_txt)
+                cards = getCards(titleR)
+
+                for card in range(len(cards)):
+                    print(cards[card].name + " : " + cards[card].set)
+                    # if card == len(cards) - 1:
+                    cardlist.append(cards[card])
+                if len(cards) == 0:
+                    print(titleR + " not found in the db")
+    if len(cardlist) == 0:
         pass
-    elif len(cardlist)==1:
+    elif len(cardlist) == 1:
         return cardlist
     else:
-        result=[]
+        result = []
         for card in range(len(cardlist)):
-            if cardlist[card].image_url!=None:
-                img_gray=cv2.resize(cv2.cvtColor(img,cv2.COLOR_BGR2GRAY),[200,300])
-                template=cv2.resize(url_to_image(cardlist[card].image_url),[200,300])
-                cv2.imshow('test',template)
-                #cv2.waitKey(0)
+            if cardlist[card].image_url != None:
+                img_gray = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), [200, 300])
+                template = cv2.resize(url_to_image(cardlist[card].image_url), [200, 300])
+                # cv2.imshow('test',template)
+                # cv2.waitKey(0)
 
-                res=cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-                result.append([card,res])
-        index_highest_card=None
-        highest_val=0
+                res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+                result.append([card, res])
+        index_highest_card = None
+        highest_val = 0
         for resul in range(len(result)):
-            if result[resul][1]>= highest_val:
-                index_highest_card=result[resul][0]
-                highest_val=result[resul][1]
+            if result[resul][1] >= highest_val:
+                index_highest_card = result[resul][0]
+                highest_val = result[resul][1]
             pass
 
-        print(f'index card: {index_highest_card}\n'
-              f'card name: {cardlist[index_highest_card].name}')
+        print(f'\nindex card: {index_highest_card}\n'
+              f'card name: {cardlist[index_highest_card].name}\n')
         return cardlist[index_highest_card]
+
 
 # constants
 testStr = [":", "’", ";", "—", "$", "/", "_"]
@@ -271,14 +290,14 @@ for f in listdir("TestCards"):
     listNames.append(title_txt)
     card = card_searching_single(title_txt, img)
 
-cards = card_searching(listNames)
+'''cards = card_searching(listNames)
 
 print('\n\n')
 for card in cards:
     print(f"name: {card.name}\n set: {card.set}\n imageUrl: {card.image_url}")
     if card.image_url != None:
         cv2.imshow("test", url_to_image(card.image_url))
-        cv2.waitKey(0)
+        cv2.waitKey(0)'''
 
 val = input("Delete debug images? y/n: ")
 if val == 'y' or val == "Y":
