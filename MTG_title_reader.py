@@ -1,18 +1,26 @@
 import os
 import shutil
-import sys
-
+from urllib.request import urlopen
 import mtgsdk
 import numpy as np
 import cv2
 from os import listdir
 from os import makedirs
 from os import path
-from mtgsdk import Card
 import pytesseract
-from collections import OrderedDict
 
 from pytesseract import Output
+
+
+def url_to_image(url, readFlag=cv2.IMREAD_COLOR):
+    # download the image, convert it to a NumPy array, and then read
+    # it into OpenCV format
+    resp = urlopen(url)
+    image = np.asarray(bytearray(resp.read()), dtype="uint8")
+    image = cv2.imdecode(image, readFlag)
+
+    # return the image
+    return image
 
 
 def testContourValidity(contour, full_width, full_height):
@@ -152,12 +160,12 @@ def removeWordFromTitle(title, removeFirstWord=True):
     return ' '.join(map(str, splitTitle))
 
 
-def getCards(title,set=''):
-
+def getCards(title, set=''):
     return mtgsdk.Card.where(set=set).where(name=title).where(page=0).where(pageSize=10).all()
 
 
 def card_searching(titles):
+    cardList = []
     for title in range(len(titles)):
         if titles[title] != '':
             # cards = getCards(titles[title],'AFR)
@@ -165,6 +173,8 @@ def card_searching(titles):
 
             for card in range(len(cards)):
                 print(cards[card].name + " : " + cards[card].set)
+                if card == len(cards) - 1:
+                    cardList.append(cards[card])
             if len(cards) == 0:
                 print(titles[title] + " not found in the db"
                                       "\n try to remove last word ... ")
@@ -174,16 +184,22 @@ def card_searching(titles):
 
                 for card in range(len(cards)):
                     print(cards[card].name + " : " + cards[card].set)
+                    if card == len(cards) - 1:
+                        cardList.append(cards[card])
+
                 if len(cards) == 0:
                     print(titleR + " not found in the db")
 
             print("__________________________")
+    return cardList
 
 
+# constants
 testStr = [":", "’", ";", "—", "$", "/", "_"]
 os.putenv('TESSDATA_PREFIX', 'C:\\Program Files\\Tesseract-OCR\\tessdata\\mtg.traineddata')
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
+# variables
 y1, y2 = 15, 90
 x1, x2 = 30, 410
 listNames = []
@@ -191,19 +207,16 @@ for f in listdir("TestCards"):
     print(f)
     filename = "TestCards/" + f
     img = cv2.imread(filename)
+    # find countours
     square = find_square(img, f)
-    # Debug
     im_debug = cv2.drawContours(img.copy(), [square], -1, (0, 255, 0), 3)
     debug_image(im_debug, "4_selected_contour", f)
-    # Fix and save
     img = fix_perspective(img, square)
-
+    # set the image right
     debug_image(img, '5_perspective_fix', f)
-
+    # get the title from the image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     title = gray[y1:y2, x1:x2]
-
     flag, thresh = cv2.threshold(title, 100, 255, cv2.THRESH_BINARY)
     file_name = 'titles/' + f
     cv2.imwrite(file_name, thresh)
@@ -219,11 +232,14 @@ for f in listdir("TestCards"):
     else:
         break
 
-card_searching(listNames)
+cards = card_searching(listNames)
 
 print('\n\n')
-for name in listNames:
-    print(name)
+for card in cards:
+    print(f"name: {card.name}\n set: {card.set}\n imageUrl: {card.image_url}")
+    if card.image_url != None:
+        cv2.imshow("test", url_to_image(card.image_url))
+        cv2.waitKey(0)
 
 val = input("Delete debug images? y/n: ")
 if val == 'y' or val == "Y":
