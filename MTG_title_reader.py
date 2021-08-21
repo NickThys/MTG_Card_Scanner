@@ -125,11 +125,11 @@ def sort_points(pts):
 
 def fix_perspective(image, pts):
     (tl, tr, br, bl) = sort_points(pts)
-    maxW = max_distance(br, bl, tr, tl)
-    maxH = max_distance(tr, br, tl, bl)
-    dst = np.array([[0, 0], [maxW - 1, 0], [maxW - 1, maxH - 1], [0, maxH - 1]], dtype="float32")
+    max_w = max_distance(br, bl, tr, tl)
+    max_h = max_distance(tr, br, tl, bl)
+    dst = np.array([[0, 0], [max_w - 1, 0], [max_w - 1, max_h - 1], [0, max_h - 1]], dtype="float32")
     transform = cv2.getPerspectiveTransform(np.array([tl, tr, br, bl], dtype="float32"), dst)
-    fixed = cv2.warpPerspective(image, transform, (maxW, maxH))
+    fixed = cv2.warpPerspective(image, transform, (max_w, max_h))
     fixed_resized = cv2.resize(fixed, [550, 740])
     return fixed_resized
 
@@ -157,13 +157,13 @@ def filter_title(texts):
 
 
 def remove_word_from_title(full_title, removeFirstWord=True):
-    splitTitle = full_title.split()
-    for word in range(len(splitTitle)):
+    split_title = full_title.split()
+    for word in range(len(split_title)):
         if removeFirstWord is True and word == 0:
-            splitTitle.pop(word)
-        if removeFirstWord is False and word == len(splitTitle) - 1:
-            splitTitle.pop(word)
-    return ' '.join(map(str, splitTitle))
+            split_title.pop(word)
+        if removeFirstWord is False and word == len(split_title) - 1:
+            split_title.pop(word)
+    return ' '.join(map(str, split_title))
 
 
 # </editor-fold>
@@ -204,6 +204,44 @@ def card_searching(titles):
     return card_list
 
 
+def get_exact_card(card_list, card_img):
+    card_img = card_img
+    if len(card_list) == 0:
+        return None
+    elif len(card_list) == 1:
+        '''cv2.imshow("og", card_img)
+        cv2.imshow("suggested", url_to_image(card_list[0].image_url))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()'''
+        return card_list
+    else:
+        result = []
+        for card_index in range(len(card_list)):
+            if card_list[card_index].image_url is not None:
+                img_gray = cv2.resize(cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY), [200, 300])
+                template = cv2.resize(url_to_image(card_list[card_index].image_url), [200, 300])
+                # cv2.imshow('test',template)
+                # cv2.waitKey(0)
+
+                res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+                result.append([card_index, res])
+        index_highest_card = None
+        highest_val = 0
+        for single_result in range(len(result)):
+            if result[single_result][1] >= highest_val:
+                index_highest_card = result[single_result][0]
+                highest_val = result[single_result][1]
+            pass
+        '''cv2.imshow("og", card_img)
+        cv2.imshow("suggested", url_to_image(card_list[index_highest_card].image_url))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        '''
+        print(f'\nindex card: {index_highest_card}\n'
+              f'card name: {card_list[index_highest_card].name}\n')
+        return card_list[index_highest_card]
+
+
 def card_searching_single(txt_title, card_img):
     card_list = []
     if txt_title != "":
@@ -232,32 +270,7 @@ def card_searching_single(txt_title, card_img):
                     card_list.append(cards[card_index])
                 if len(cards) == 0:
                     print(title_r + " not found in the db")
-    if len(card_list) == 0:
-        pass
-    elif len(card_list) == 1:
-        return card_list
-    else:
-        result = []
-        for card_index in range(len(card_list)):
-            if card_list[card_index].image_url is not None:
-                img_gray = cv2.resize(cv2.cvtColor(card_img, cv2.COLOR_BGR2GRAY), [200, 300])
-                template = cv2.resize(url_to_image(card_list[card_index].image_url), [200, 300])
-                # cv2.imshow('test',template)
-                # cv2.waitKey(0)
-
-                res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-                result.append([card_index, res])
-        index_highest_card = None
-        highest_val = 0
-        for single_result in range(len(result)):
-            if result[single_result][1] >= highest_val:
-                index_highest_card = result[single_result][0]
-                highest_val = result[single_result][1]
-            pass
-
-        print(f'\nindex card: {index_highest_card}\n'
-              f'card name: {card_list[index_highest_card].name}\n')
-        return card_list[index_highest_card]
+    return get_exact_card(card_list, card_img)
 
 
 # constants
@@ -268,8 +281,11 @@ pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesse
 # variables
 y1, y2 = 15, 90
 x1, x2 = 30, 410
+amount_of_cards_not_found = 0
 listNames = []
-
+back_mtg_card = cv2.imread("Templates/Magic_card_back.jpg")
+size_card = [back_mtg_card.shape[1], back_mtg_card.shape[0]]
+cards_not_found = back_mtg_card
 for f in listdir("TestCards"):
     print(f)
     filename = "TestCards/" + f
@@ -292,7 +308,10 @@ for f in listdir("TestCards"):
     title_txt = filter_title(pytesseract.image_to_data(title, output_type=Output.DICT)['text'])
     listNames.append(title_txt)
     card = card_searching_single(title_txt, img)
-
+    if card is None:
+        img_resized = cv2.resize(img, size_card)
+        cards_not_found = np.concatenate((cards_not_found, img_resized), axis=0)
+        amount_of_cards_not_found += 1
 '''cards = card_searching(listNames)
 
 print('\n\n')
@@ -302,6 +321,10 @@ for card in cards:
         cv2.imshow("test", url_to_image(card.image_url))
         cv2.waitKey(0)'''
 
+amount_of_cards = len(os.listdir("TestCards"))
+print(f'{amount_of_cards_not_found}/{amount_of_cards} not fount')
+cv2.imshow('cards not found', cards_not_found)
+cv2.waitKey(0)
 val = input("Delete debug images? y/n: ")
 if val == 'y' or val == "Y":
     shutil.rmtree('debug')
