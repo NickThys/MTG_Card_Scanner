@@ -213,7 +213,7 @@ def get_exact_card(card_list, card_img):
         cv2.imshow("suggested", url_to_image(card_list[0].image_url))
         cv2.waitKey(0)
         cv2.destroyAllWindows()'''
-        return card_list
+        return card_list[0]
     else:
         result = []
         for card_index in range(len(card_list)):
@@ -235,8 +235,8 @@ def get_exact_card(card_list, card_img):
         '''cv2.imshow("og", card_img)
         cv2.imshow("suggested", url_to_image(card_list[index_highest_card].image_url))
         cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        '''
+        cv2.destroyAllWindows()'''
+
         print(f'\nindex card: {index_highest_card}\n'
               f'card name: {card_list[index_highest_card].name}\n')
         return card_list[index_highest_card]
@@ -269,12 +269,21 @@ def card_searching_single(txt_title, card_img):
                     # if card == len(cards) - 1:
                     card_list.append(cards[card_index])
                 if len(cards) == 0:
-                    print(title_r + " not found in the db")
+                    print(title_r + " not found in the db"
+                                    "\n gonna try to search after the card by seaching for the card word by word")
+                    title_split = title_txt.split()
+                    for word in title_split:
+                        cards = get_cards(word)
+                        if len(cards) <= 25:
+                            for card_index in range(len(cards)):
+                                print(cards[card_index].name + " : " + cards[card_index].set)
+                                card_list.append(cards[card_index])
+                            break
     return get_exact_card(card_list, card_img)
 
 
 # constants
-testStr = [":", "’", ";", "—", "$", "/", "_"]
+testStr = [":", "’", ";", "—", "$", "/", "_", "|"]
 os.putenv('TESSDATA_PREFIX', 'C:\\Program Files\\Tesseract-OCR\\tessdata\\mtg.traineddata')
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
@@ -286,6 +295,7 @@ listNames = []
 back_mtg_card = cv2.imread("Templates/Magic_card_back.jpg")
 size_card = [back_mtg_card.shape[1], back_mtg_card.shape[0]]
 cards_not_found = back_mtg_card
+
 for f in listdir("TestCards"):
     print(f)
     filename = "TestCards/" + f
@@ -307,11 +317,13 @@ for f in listdir("TestCards"):
     debug_image(title, '7_title_img', f)
     title_txt = filter_title(pytesseract.image_to_data(title, output_type=Output.DICT)['text'])
     listNames.append(title_txt)
+    print(title_txt)
     card = card_searching_single(title_txt, img)
     if card is None:
         img_resized = cv2.resize(img, size_card)
         cards_not_found = np.concatenate((cards_not_found, img_resized), axis=0)
         amount_of_cards_not_found += 1
+
 '''cards = card_searching(listNames)
 
 print('\n\n')
@@ -322,7 +334,7 @@ for card in cards:
         cv2.waitKey(0)'''
 
 amount_of_cards = len(os.listdir("TestCards"))
-print(f'{amount_of_cards_not_found}/{amount_of_cards} not fount')
+print(f'{amount_of_cards_not_found}/{amount_of_cards} not found')
 cv2.imshow('cards not found', cards_not_found)
 cv2.waitKey(0)
 val = input("Delete debug images? y/n: ")
