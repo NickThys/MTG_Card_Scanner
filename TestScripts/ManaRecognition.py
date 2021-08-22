@@ -5,11 +5,11 @@ import cv2
 import numpy as np
 
 matching_th = 0.8
-green = cv2.imread('Templates/ManaColors/Green.jpg', 0)
-blue = cv2.imread('Templates/ManaColors/Blue.jpg', 0)
-red = cv2.imread('Templates/ManaColors/Red.jpg', 0)
-white = cv2.imread('Templates/ManaColors/White.jpg', 0)
-black = cv2.imread('Templates/ManaColors/Black.jpg', 0)
+green = cv2.imread('../Templates/ManaColors/Green.jpg', 0)
+blue = cv2.imread('../Templates/ManaColors/Blue.jpg', 0)
+red = cv2.imread('../Templates/ManaColors/Red.jpg', 0)
+white = cv2.imread('../Templates/ManaColors/White.jpg', 0)
+black = cv2.imread('../Templates/ManaColors/Black.jpg', 0)
 
 w, h = green.shape[::-1]
 

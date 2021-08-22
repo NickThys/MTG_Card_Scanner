@@ -7,10 +7,10 @@ import numpy as np
 matching_th = 0.70
 
 size = [30, 30]
-AFR = cv2.resize(cv2.imread('Templates/TestSetIcon/AFR_C.png', 0), size)
-AFR_U = cv2.resize(cv2.imread('Templates/TestSetIcon/AFR_U.png', 0), size)
-ZNR = cv2.resize(cv2.imread('Templates/SetIcons/ZNR_C.jpg', 0), size)
-ZNR_R = cv2.resize(cv2.imread('Templates/TestSetIcon/InkedZNR_R_LI.jpg', 0), size)
+AFR = cv2.resize(cv2.imread('../Templates/TestSetIcon/AFR_C.png', 0), size)
+AFR_U = cv2.resize(cv2.imread('../Templates/TestSetIcon/AFR_U.png', 0), size)
+ZNR = cv2.resize(cv2.imread('../Templates/SetIcons/ZNR_C.jpg', 0), size)
+ZNR_R = cv2.resize(cv2.imread('../Templates/TestSetIcon/InkedZNR_R_LI.jpg', 0), size)
 w, h = ZNR.shape[::-1]
 
 
@@ -30,7 +30,7 @@ def show():
     cv2.waitKey(0)
 
 
-for f in listdir("testCard"):
+for f in listdir("../testCard"):
     filename = "testCard/" + f
     img_to_check = cv2.imread(filename)
 

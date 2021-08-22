@@ -131,7 +131,7 @@ if not path.isdir('titles'):
     makedirs('titles')
 
 
-for f in listdir("TestCards"):
+for f in listdir("../TestCards"):
     print(f)
     filename = "../TestCards/" + f
     img = cv2.imread(filename)
